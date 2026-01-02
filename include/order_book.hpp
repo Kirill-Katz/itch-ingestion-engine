@@ -21,6 +21,7 @@ class VectorLevel {
 public:
     void remove(Level level);
     void add(Level level);
+    Level best() const;
 
     std::vector<Level> levels;
 };
@@ -30,6 +31,11 @@ public:
         std::cerr << message << '\n';
         std::abort();
     }
+}
+
+template<Side S>
+inline Level VectorLevel<S>::best() const {
+    return levels.back();
 }
 
 template<Side S>
@@ -85,10 +91,23 @@ public:
     void replace_order(uint64_t order_id, uint64_t new_order_id, uint32_t qty, uint32_t price);
     void delete_order(uint64_t order_id);
 
+    Level best_bid() const;
+    Level best_ask() const;
+
     std::unordered_map<uint64_t, Order> orders_map;
     Levels<Side::Bid> bid_levels;
     Levels<Side::Ask> ask_levels;
 };
+
+template<template<Side> typename Levels>
+inline Level OrderBook<Levels>::best_bid() const {
+    return bid_levels.best();
+}
+
+template<template<Side> typename Levels>
+inline Level OrderBook<Levels>::best_ask() const {
+    return ask_levels.best();
+}
 
 template<template<Side> typename Levels>
 inline void OrderBook<Levels>::add_order(uint64_t order_id, Side side, uint32_t qty, uint32_t price) {

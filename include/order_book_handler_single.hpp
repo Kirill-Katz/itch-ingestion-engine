@@ -30,8 +30,17 @@ struct OrderBookHandlerSingle {
     void handle_order_delete(const ITCHv1::OrderDelete&);
     void handle_order_replace(const ITCHv1::OrderReplace&);
 
+    void handle_after();
+
     OB::OrderBook<OB::VectorLevel> order_book;
 };
+
+inline void OrderBookHandlerSingle::handle_after() {
+    if (order_book.bid_levels.levels.size() && order_book.ask_levels.levels.size()) {
+        std::cout << "Best ask: " << order_book.best_ask().price << '\n';
+        std::cout << "Best bid: " << order_book.best_bid().price << '\n';
+    }
+}
 
 inline void OrderBookHandlerSingle::handle_stock_directory(const ITCHv1::StockDirectory& msg) {
     if (std::string_view(msg.stock, 8) == "AAPL    ") {

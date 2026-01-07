@@ -181,6 +181,9 @@ int main(int argc, char** argv) {
     const std::byte* src = src_buf.data();
     size_t len = bytes_read;
 
+    //pid_t pid = run_perf_stat();
+    //sleep(3);
+
     ITCH::ItchParser parser;
     {
         BenchmarkOrderBook ob_bm_handler;
@@ -194,6 +197,8 @@ int main(int argc, char** argv) {
         parser.parse(src, len, parsing_bm_handler);
         export_latency_distribution_csv(parsing_bm_handler, outdir + "parsing_lantecy_distribution.csv");
     }
+
+    //kill(pid, SIGINT);
 
     return 0;
 }

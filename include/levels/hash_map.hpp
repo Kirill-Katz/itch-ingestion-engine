@@ -6,6 +6,8 @@
 #include "order_book_shared.hpp"
 
 
+namespace OB {
+
 class PriceToQtyMap {
 
 struct Entry {
@@ -91,4 +93,4 @@ private:
 
 };
 
-
+}

@@ -1,7 +1,6 @@
 #pragma once
 #include <cstdint>
 #include <absl/container/flat_hash_map.h>
-#include <ankerl/unordered_dense.h>
 #include "order_book_shared.hpp"
 
 namespace OB {
@@ -22,10 +21,6 @@ public:
     absl::flat_hash_map<uint64_t, Order> orders_map;
     Levels<Side::Bid> bid_levels;
     Levels<Side::Ask> ask_levels;
-
-    OrderBook() {
-        //orders_map.reserve(20'000);
-    }
 };
 
 template<template<Side> typename Levels>

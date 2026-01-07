@@ -1,5 +1,4 @@
 #pragma once
-#include <iostream>
 #include <vector>
 #include "order_book_shared.hpp"
 

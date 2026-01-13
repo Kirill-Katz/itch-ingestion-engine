@@ -181,8 +181,8 @@ int main(int argc, char** argv) {
     const std::byte* src = src_buf.data();
     size_t len = bytes_read;
 
-    //pid_t pid = run_perf_stat();
-    //sleep(3);
+    pid_t pid = run_perf_stat();
+    sleep(3);
 
     ITCH::ItchParser parser;
     {
@@ -192,12 +192,12 @@ int main(int argc, char** argv) {
         export_prices_csv(ob_bm_handler.prices, outdir);
     }
 
-    {
-        BenchmarkParsing parsing_bm_handler;
-        parser.parse(src, len, parsing_bm_handler);
-        export_latency_distribution_csv(parsing_bm_handler, outdir + "parsing_lantecy_distribution.csv");
-    }
+    //{
+    //    BenchmarkParsing parsing_bm_handler;
+    //    parser.parse(src, len, parsing_bm_handler);
+    //    export_latency_distribution_csv(parsing_bm_handler, outdir + "parsing_lantecy_distribution.csv");
+    //}
 
-    //kill(pid, SIGINT);
+    kill(pid, SIGINT);
     return 0;
 }

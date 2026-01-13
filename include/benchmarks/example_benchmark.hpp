@@ -4,6 +4,8 @@
 #include <absl/container/flat_hash_map.h>
 #include <x86intrin.h>
 #include "levels/heap_level.hpp"
+#include "levels/btree_level.hpp"
+#include "levels/array_levels_v2.hpp"
 #include "itch_parser.hpp"
 #include "order_book.hpp"
 
@@ -23,7 +25,7 @@ struct BenchmarkOrderBook {
     void handle_before();
     void reset();
 
-    OB::OrderBook<OB::HeapLevels> order_book;
+    OB::OrderBook<OB::ArrayLevelsV2> order_book;
 
     bool touched = false;
     absl::flat_hash_map<uint64_t, uint64_t> latency_distribution;

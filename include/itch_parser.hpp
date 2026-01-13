@@ -77,20 +77,20 @@ struct OffsetAt<0, Layout> {
 };
 
 template<typename T>
-inline T load_be(const std::byte* p);
+inline T load_be(const std::byte* p) noexcept;
 
 template<>
-inline char load_be<char>(const std::byte* p) {
+inline char load_be<char>(const std::byte* p) noexcept {
     return static_cast<char>(*p);
 }
 
 template<>
-inline uint16_t load_be<uint16_t>(const std::byte* p) {
+inline uint16_t load_be<uint16_t>(const std::byte* p) noexcept {
     return (uint16_t(p[0]) << 8) | uint16_t(p[1]);
 }
 
 template<>
-inline uint32_t load_be<uint32_t>(const std::byte* p) {
+inline uint32_t load_be<uint32_t>(const std::byte* p) noexcept {
     return (uint32_t(p[0]) << 24) |
            (uint32_t(p[1]) << 16) |
            (uint32_t(p[2]) << 8)  |
@@ -98,7 +98,7 @@ inline uint32_t load_be<uint32_t>(const std::byte* p) {
 }
 
 template<>
-inline uint64_t load_be<uint64_t>(const std::byte* p) {
+inline uint64_t load_be<uint64_t>(const std::byte* p) noexcept {
     return (uint64_t(p[0]) << 56) |
            (uint64_t(p[1]) << 48) |
            (uint64_t(p[2]) << 40) |
@@ -109,7 +109,7 @@ inline uint64_t load_be<uint64_t>(const std::byte* p) {
            uint64_t(p[7]);
 }
 
-inline uint64_t load_be(const std::byte* p, be48 encoding) {
+inline uint64_t load_be(const std::byte* p, be48 encoding) noexcept {
     uint32_t hi = load_be<uint32_t>(p);
     uint16_t lo = load_be<uint16_t>(p);
     return (uint64_t(hi) << 16) | lo;

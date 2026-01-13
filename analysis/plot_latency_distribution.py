@@ -34,7 +34,7 @@ def plot_latency_distribution(infile, outfile):
     total_count = sum(counts)
     avg_latency = sum(l * c for l, c in zip(latencies, counts)) / total_count
 
-    data = [(l, c) for l, c in data if l <= 200]
+    data = [(l, c) for l, c in data if l <= 500]
     if not data:
         raise RuntimeError("No data <= 1000 ns")
 

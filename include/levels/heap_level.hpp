@@ -1,6 +1,7 @@
 #pragma once
 #include <queue>
 #include <absl/container/flat_hash_map.h>
+#include <absl/container/btree_map.h>
 #include "order_book_shared.hpp"
 
 namespace OB {

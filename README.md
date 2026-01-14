@@ -45,7 +45,7 @@ First install matplotlib by running:
 pip install matplotlib
 ```
 
-To analyze the latency you have to go to run the `analysis/plot_latency_distribution.py` and `analysis/plot_prices.py` files like this:
+To analyze the latency you have to run the `analysis/plot_latency_distribution.py` and `analysis/plot_prices.py` files like this:
 ```
 python plot_latency_distribution.py [input directory] [output directory]
 python plot_prices.py [path to prices.csv] [output png file]

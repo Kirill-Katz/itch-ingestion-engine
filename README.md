@@ -20,7 +20,7 @@ sudo apt update
 sudo apt install libabsl-dev
 ```
 
-The `order_book.hpp` implementation serves as an interface and all implementations for the underlying order book operations can be found in the `include/levels/` directory. The best implementation used in the benchmarks is the `include/levels/heap_level.hpp` implementation.
+The `order_book.hpp` implementation serves as an interface and all implementations for the underlying order book operations can be found in the `include/levels/` directory.
 
 # How to run the benchmakrs?
 Install `absl` and `google-benchmark`:
@@ -57,11 +57,10 @@ The ITCH file can be downloaded here: https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/
 
 # Results
 
-The results were obtained on a pinned p-core of an i7-12700h CPU using `taskset -c 1` with turbo boost on (4.653Ghz peak) with Hyper Threading on and the CPU frequency scaling governor set to performance on an idle machine. The machine is an Asus ROG Zephyrus M16 GU603ZM_GU603ZM. The OS is Ubuntu 24.04.3 LTS with an unmodified Linux 6.14.0-37-generic kernel. Compiled with g++ 13.3.0 with -DNDEBUG -O3 -march=native flags. Latency measured using the `rdtscp` instruction and then converted into ns by estimating its frequence. The order book results were obtained on the first 3GB of the above mentioned file on the Nvidia stock messages using the `include/levels/heap_level.hpp` implementation. The results for the parser benchmark were obtained on all types of ITCH messages on the same first 3GB of the file.
+The results were obtained on a pinned p-core of an i7-12700h CPU using `taskset -c 1` with turbo boost on (4.653Ghz peak) with Hyper Threading on and the CPU frequency scaling governor set to performance on an idle machine. The machine is an Asus ROG Zephyrus M16 GU603ZM_GU603ZM. The OS is Ubuntu 24.04.3 LTS with an unmodified Linux 6.14.0-37-generic kernel. Compiled with g++ 13.3.0 with -DNDEBUG -O3 -march=native flags. Latency measured using the `rdtscp` instruction and then converted into ns by estimating its frequence. The order book results were obtained on the first 3GB of the above mentioned file on the Nvidia stock messages using the `include/levels/vector_level_b_search.hpp` implementation. The results for the parser benchmark were obtained on all types of ITCH messages on the same first 3GB of the file.
 
 ### ITCH parsing + Order Book Updates Latency Distribution 
-<img width="3000" height="1800" alt="parsing_and_order_book_latency_distribution" src="https://github.com/user-attachments/assets/7bd09120-943f-49e3-a60a-75e337617a59" />
-
+<img width="3000" height="1800" alt="parsing_and_order_book_latency_distribution" src="https://github.com/user-attachments/assets/3c028172-44b4-4362-8dee-bc081874e3d7" />
 
 ### ITCH parsing Latency Distribution
 <img width="3000" height="1800" alt="parsing_lantecy_distribution" src="https://github.com/user-attachments/assets/82497778-c3b8-466d-a183-7fbc7ff3ca8e" />

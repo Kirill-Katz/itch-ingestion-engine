@@ -72,5 +72,6 @@ The results were obtained on a pinned p-core of an i7-12700h CPU using `taskset 
 
 ### Best Bids for Nvidia stock for the first few trading hours on 01.30.2019
 
-<img width="1920" height="1440" alt="best_bids" src="https://github.com/user-attachments/assets/07fe6422-46ed-42ea-936d-2e5215921216" />
+<img width="1920" height="1440" alt="best_bids" src="https://github.com/user-attachments/assets/bb35094f-2f1f-49a9-bb5a-a7dd486ebfeb" />
+
 

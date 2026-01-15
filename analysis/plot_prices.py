@@ -7,7 +7,16 @@ def plot_prices(infile, outfile):
 
     with open(infile, newline="") as f:
         reader = csv.DictReader(f)
+
+        skipped = 0
         for row in reader:
+            # skipping the first 50 best bids, because at the start of the trading day
+            # they start very low prices which breaks the plotting of the graph by introducing a
+            # huge spike, after the first 50 ticks the bids normalize
+            if skipped < 50:
+                skipped += 1
+                continue
+
             if int(row["price"]) != 0:
                 prices.append(int(row["price"]) / 10_000)
 

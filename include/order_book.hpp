@@ -42,22 +42,21 @@ void OrderBook<Levels>::add_order(uint64_t order_id, Side side, uint32_t qty, ui
     orders_map.insert({order_id, order});
 
     if (side == Side::Bid) {
-        bid_levels.add({price, qty});
+        bid_levels.add({qty, price});
     } else {
-        ask_levels.add({price, qty});
+        ask_levels.add({qty, price});
     }
 }
 
 template<template<Side> typename Levels>
 void OrderBook<Levels>::cancel_order(uint64_t order_id, uint32_t qty) {
     Order& order = orders_map.at(order_id);
-
     UNEXPECTED(order.qty < qty, "Partial cancel order volume greater than order volume");
 
     if (order.side == Side::Bid) {
-        bid_levels.remove({order.price, qty});
+        bid_levels.remove({qty, order.price});
     } else {
-        ask_levels.remove({order.price, qty});
+        ask_levels.remove({qty, order.price});
     }
 
     order.qty -= qty;
@@ -73,9 +72,9 @@ void OrderBook<Levels>::execute_order(uint64_t order_id, uint32_t qty) {
     UNEXPECTED(order.qty < qty, "Partial execute order volume greater than order volume");
 
     if (order.side == Side::Bid) {
-        bid_levels.remove({order.price, qty});
+        bid_levels.remove({qty, order.price});
     } else {
-        ask_levels.remove({order.price, qty});
+        ask_levels.remove({qty, order.price});
     }
 
     order.qty -= qty;
@@ -95,11 +94,11 @@ void OrderBook<Levels>::replace_order(uint64_t order_id, uint64_t new_order_id, 
     orders_map.insert({new_order_id, new_order});
 
     if (new_order.side == Side::Bid) {
-        bid_levels.remove({old_order.price, old_order.qty});
-        bid_levels.add({price, qty});
+        bid_levels.remove({old_order.qty, old_order.price});
+        bid_levels.add({qty, price});
     } else {
-        ask_levels.remove({old_order.price, old_order.qty});
-        ask_levels.add({price, qty});
+        ask_levels.remove({old_order.qty, old_order.price});
+        ask_levels.add({qty, price});
     }
 
     orders_map.erase(order_id);
@@ -110,9 +109,9 @@ void OrderBook<Levels>::delete_order(uint64_t order_id) {
     Order& order = orders_map.at(order_id);
 
     if (order.side == Side::Bid) {
-        bid_levels.remove({order.price, order.qty});
+        bid_levels.remove({order.qty, order.price});
     } else {
-        ask_levels.remove({order.price, order.qty});
+        ask_levels.remove({order.qty, order.price});
     }
 
     orders_map.erase(order_id);

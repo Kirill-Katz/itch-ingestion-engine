@@ -3,6 +3,7 @@
 #include <benchmark/benchmark.h>
 #include <cstdint>
 #include <absl/container/flat_hash_map.h>
+#include <emmintrin.h>
 #include <x86intrin.h>
 #include "levels/heap_level.hpp"
 #include "levels/btree_level.hpp"
@@ -29,7 +30,7 @@ struct BenchmarkOrderBook {
     void handle_before();
     void reset();
 
-    OB::OrderBook<OB::VectorLevelBSearch> order_book;
+    OB::OrderBook<OB::VectorLevelBSearchSplit> order_book;
 
     bool touched = false;
     absl::flat_hash_map<uint64_t, uint64_t> latency_distribution;
@@ -52,7 +53,8 @@ struct BenchmarkOrderBook {
 inline void BenchmarkOrderBook::handle_before() {
     #ifndef PERF
     touched = false;
-    t0 = __rdtscp(&aux_start);
+    _mm_lfence();
+    t0 = __rdtsc();
     #endif
 }
 
@@ -66,10 +68,11 @@ inline void BenchmarkOrderBook::handle_after() {
         last_price = best_bid;
     }
 
-    uint64_t t1 = __rdtscp(&aux_end);
+    _mm_lfence();
+    uint64_t t1 = __rdtsc();
     auto cycles = t1 - t0;
 
-    if (touched && aux_end == aux_start) {
+    if (touched) {
         latency_distribution[cycles]++;
     }
     #endif

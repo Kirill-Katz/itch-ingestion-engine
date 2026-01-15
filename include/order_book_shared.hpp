@@ -5,8 +5,8 @@
 
 namespace OB {
 struct Level {
-    uint32_t price;
     uint64_t qty;
+    uint32_t price;
 };
 
 enum class Side {

@@ -45,7 +45,7 @@ First install matplotlib by running:
 pip install matplotlib
 ```
 
-To analyze the latency you have to go to run the `analysis/plot_latency_distribution.py` and `analysis/plot_prices.py` files like this:
+To analyze the latency you have to run the `analysis/plot_latency_distribution.py` and `analysis/plot_prices.py` files like this:
 ```
 python plot_latency_distribution.py [input directory] [output directory]
 python plot_prices.py [path to prices.csv] [output png file]
@@ -53,7 +53,7 @@ python plot_prices.py [path to prices.csv] [output png file]
 You can also analyze the benchmarks using perf by uncommenting the 3 lines in `int main()`, but make sure you remove the timing code from the benchmark handlers so that the perf is not poluted with almost perfectly predicted brances from the timing code.
 
 # Where to get the ITCH file? 
-The ITCH file can be downloaded here: https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/. For my tests I downloaded the 01302019.NASDAQ_ITCH50 file.
+The ITCH file can be downloaded here: https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/. For my tests I downloaded the 01302019.NASDAQ_ITCH50 file. Be aware that an ITCH file take around 10Gb.
 
 # Results
 

@@ -25,7 +25,7 @@ template<Side S>
 inline Level VectorLevelBSearchSplit<S>::best() const {
     if (!prices.empty()) {
         size_t i = prices.size() - 1;
-        return { prices[i], qtys[i] };
+        return { qtys[i], prices[i] };
     } else {
         return {0, 0};
     }
@@ -45,9 +45,7 @@ inline void VectorLevelBSearchSplit<S>::remove(Level level) {
     );
 
     UNEXPECTED(it == prices.end() || *it != level.price, "Remove didn't find a level");
-
     size_t idx = it - prices.begin();
-
     UNEXPECTED(level.qty > qtys[idx], "Remove underflow");
 
     qtys[idx] -= level.qty;

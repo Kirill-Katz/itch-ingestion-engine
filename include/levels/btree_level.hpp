@@ -52,7 +52,7 @@ inline void BTreeLevels<S>::remove(Level level) {
 
     it->second -= level.qty;
     if (it->second == 0) {
-        //book.erase(it);
+        book.erase(it);
     }
 }
 
@@ -63,7 +63,7 @@ inline Level BTreeLevels<S>::best() {
     }
 
     auto it = book.begin();
-    return {it->first, it->second};
+    return {it->second, it->first};
 }
 
 }

@@ -53,8 +53,7 @@ struct BenchmarkOrderBook {
 inline void BenchmarkOrderBook::handle_before() {
     #ifndef PERF
     touched = false;
-    _mm_lfence();
-    t0 = __rdtsc();
+    t0 = __rdtscp(&aux_start);
     #endif
 }
 
@@ -63,14 +62,13 @@ inline void BenchmarkOrderBook::handle_after() {
     benchmark::DoNotOptimize(best_bid);
 
     #ifndef PERF
+    uint64_t t1 = __rdtscp(&aux_end);
+    auto cycles = t1 - t0;
+
     if (last_price != best_bid) {
         prices.push_back(best_bid);
         last_price = best_bid;
     }
-
-    _mm_lfence();
-    uint64_t t1 = __rdtsc();
-    auto cycles = t1 - t0;
 
     if (touched) {
         latency_distribution[cycles]++;

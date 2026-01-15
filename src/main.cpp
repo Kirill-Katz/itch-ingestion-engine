@@ -104,6 +104,11 @@ pid_t run_perf_stat() {
     return pid;
 }
 
+uint64_t cycles_to_ns(uint64_t cycles, uint64_t freq) {
+    __int128 num = (__int128)cycles * 1'000'000'000 + (freq / 2);
+    return (uint64_t)(num / freq);
+}
+
 uint64_t calibrate_tsc() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
@@ -158,15 +163,17 @@ void export_latency_distribution_csv(
         std::abort();
     }
 
-    double total_sec = 0;
     out << "latency_ns,count\n";
     for (const auto& [cycles, count] : data) {
-        __int128 tmp = (__int128)cycles * 1'000'000'000;
-        uint64_t ns = cycles * 1e9 / rdtscp_freq;
-        double sec = double(cycles) / double(rdtscp_freq);
-        total_sec += sec * count;
+        uint64_t ns = cycles_to_ns(cycles, rdtscp_freq);
         out << ns << "," << count << "\n";
     }
+
+    __int128 total_cycles = 0;
+    for (const auto& [cycles, count] : data) {
+        total_cycles += (__int128)cycles * count;
+    }
+    double total_sec = (double)total_cycles / (double)rdtscp_freq;
 
     std::cout << "Total seconds spent: " << total_sec << '\n';
     std::cout << "Throughput: " << ob.total_messages / total_sec << '\n';
@@ -201,10 +208,7 @@ int main(int argc, char** argv) {
     filepath = argv[1];
     outdir   = argv[2];
 
-    auto res = init_benchmark(filepath);
-    auto src_buf = res.first;
-    auto bytes_read = res.second;
-
+    auto [src_buf, bytes_read] = init_benchmark(filepath);
     const std::byte* src = src_buf.data();
     size_t len = bytes_read;
 
@@ -226,14 +230,14 @@ int main(int argc, char** argv) {
         #endif
     }
 
-    //{
-    //    BenchmarkParsing parsing_bm_handler;
-    //    parser.parse(src, len, parsing_bm_handler);
+    {
+        BenchmarkParsing parsing_bm_handler;
+        parser.parse(src, len, parsing_bm_handler);
 
-    //    #ifndef PERF
-    //    export_latency_distribution_csv(parsing_bm_handler, outdir + "parsing_lantecy_distribution.csv");
-    //    #endif
-    //}
+        #ifndef PERF
+        export_latency_distribution_csv(parsing_bm_handler, outdir + "parsing_lantecy_distribution.csv");
+        #endif
+    }
 
     #ifdef PERF
         kill(pid, SIGINT);

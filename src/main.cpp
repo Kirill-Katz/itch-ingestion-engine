@@ -1,4 +1,7 @@
 #include <iostream>
+#include <rte_ether.h>
+#include <rte_ip4.h>
+#include <rte_udp.h>
 #include <vector>
 #include <iostream>
 #include <time.h>
@@ -119,24 +122,81 @@ int main(int argc, char** argv) {
     const std::byte* src = src_buf.data();
     size_t len = bytes_read;
 
-    std::thread noise(allocator_noise);
+    //std::thread noise(allocator_noise);
 
     ITCH::ItchParser parser;
     BenchmarkOrderBook ob_bm_handler;
-    rte_mbuf* bufs[32];
+    rte_mbuf* bufs[512];
 
+    std::ofstream out("../data/itch_out",
+                  std::ios::binary | std::ios::out | std::ios::trunc);
+    std::vector<char> buf;
+    buf.reserve(1<<20);
+
+    rte_eth_stats stats{};
+    uint64_t last_print = rte_get_timer_cycles();
+    uint64_t hz = rte_get_timer_hz();
+    size_t total_size = 0;
+
+    uint64_t last_seq = 0;
     while (true) {
-        uint16_t n = rte_eth_rx_burst(port_id, 0, bufs, 32);
-
+        uint16_t n = rte_eth_rx_burst(port_id, 0, bufs, 512);
         for (int i = 0; i < n; ++i) {
             rte_mbuf* m = bufs[i];
-            std::cout << "Got a packet" << '\n';
+            static int pkt_i = 0;
 
-            std::byte* p = rte_pktmbuf_mtod(m, std::byte*);
+            char* p = rte_pktmbuf_mtod(m, char*);
             uint16_t len = m->pkt_len;
+            p += sizeof(rte_ether_hdr);
+            p += sizeof(rte_ipv4_hdr);
+            auto* udp = reinterpret_cast<rte_udp_hdr*>(p);
+            p += sizeof(rte_udp_hdr);
 
-            //parser.parse(src, len, ob_bm_handler);
-            rte_pktmbuf_free(m);
+            p += 10; // temporary, MoldUDP64 of size 20 bytes
+            uint64_t seq;
+            std::memcpy(&seq, p, 8);
+            seq = rte_be_to_cpu_64(seq);
+            p += 8;
+
+            uint16_t msg_count;
+            std::memcpy(&msg_count, p, 2);
+            msg_count = rte_be_to_cpu_16(msg_count);
+            p += 2;
+
+            size_t itch_len = rte_be_to_cpu_16(udp->dgram_len) - sizeof(rte_udp_hdr) - 20;
+
+            if (rte_be_to_cpu_16(udp->dgram_len) + sizeof(rte_ipv4_hdr) + sizeof(rte_ether_hdr) > m->pkt_len) {
+                throw std::runtime_error("Something went wrong, pkt length doesn't match expected length");
+            }
+
+            uint64_t expected_seq = last_seq + 1;
+            if (expected_seq != seq) {
+                std::cout << "Gap. Expected " << expected_seq << " Got: " << seq << '\n';
+            } else {
+                last_seq = seq + msg_count - 1;
+            }
+
+            total_size += itch_len;
+        }
+
+        rte_pktmbuf_free_bulk(bufs, n);
+        uint64_t now = rte_get_timer_cycles();
+        if (now - last_print > hz) {
+            rte_eth_stats_get(port_id, &stats);
+
+            printf(
+                "Total itch received: %ld bytes"
+                "RX: %" PRIu64
+                "  missed=%" PRIu64
+                "  errors=%" PRIu64 "\n",
+                total_size,
+                stats.ipackets,
+                stats.imissed,
+                stats.ierrors
+            );
+            fflush(stdout);
+
+            last_print = now;
         }
     }
 
@@ -146,7 +206,7 @@ int main(int argc, char** argv) {
     #endif
 
     run_noise = false;
-    noise.join();
+    //noise.join();
 
     return 0;
 }

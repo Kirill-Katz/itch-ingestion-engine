@@ -50,6 +50,7 @@ void OrderBook<Levels>::add_order(uint64_t order_id, Side side, uint32_t qty, ui
 
 template<template<Side> typename Levels>
 void OrderBook<Levels>::cancel_order(uint64_t order_id, uint32_t qty) {
+    UNEXPECTED(!orders_map.contains(order_id), "Cancel order did not find an order");
     Order& order = orders_map.at(order_id);
     UNEXPECTED(order.qty < qty, "Partial cancel order volume greater than order volume");
 
@@ -67,8 +68,8 @@ void OrderBook<Levels>::cancel_order(uint64_t order_id, uint32_t qty) {
 
 template<template<Side> typename Levels>
 void OrderBook<Levels>::execute_order(uint64_t order_id, uint32_t qty) {
+    UNEXPECTED(!orders_map.contains(order_id), "Execute order did not find an order");
     Order& order = orders_map.at(order_id);
-
     UNEXPECTED(order.qty < qty, "Partial execute order volume greater than order volume");
 
     if (order.side == Side::Bid) {
@@ -85,6 +86,7 @@ void OrderBook<Levels>::execute_order(uint64_t order_id, uint32_t qty) {
 
 template<template<Side> typename Levels>
 void OrderBook<Levels>::replace_order(uint64_t order_id, uint64_t new_order_id, uint32_t qty, uint32_t price) {
+    UNEXPECTED(!orders_map.contains(order_id), "Replace order did not find an order");
     Order& old_order = orders_map.at(order_id);
 
     Order new_order;
@@ -106,6 +108,7 @@ void OrderBook<Levels>::replace_order(uint64_t order_id, uint64_t new_order_id, 
 
 template<template<Side> typename Levels>
 void OrderBook<Levels>::delete_order(uint64_t order_id) {
+    UNEXPECTED(!orders_map.contains(order_id), "Delete order did not find an order");
     Order& order = orders_map.at(order_id);
 
     if (order.side == Side::Bid) {

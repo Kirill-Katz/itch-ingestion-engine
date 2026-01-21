@@ -72,6 +72,7 @@ inline void BenchmarkOrderBook::handle_after() {
 }
 
 inline void BenchmarkOrderBook::handle(const ITCH::StockDirectory& msg) {
+    std::cout << msg.timestamp << '\n';
     if (std::string_view(msg.stock, 8) == "NVDA    ") {
         target_stock_locate = msg.stock_locate;
         touched = true;
@@ -80,6 +81,7 @@ inline void BenchmarkOrderBook::handle(const ITCH::StockDirectory& msg) {
 }
 
 inline void BenchmarkOrderBook::handle(const ITCH::AddOrderNoMpid& msg) {
+    std::cout << msg.tracking_number << '\n';
     if (msg.stock_locate == target_stock_locate) {
         order_book.add_order(msg.order_reference_number, static_cast<OB::Side>(msg.buy_sell), msg.shares, msg.price);
         touched = true;
@@ -88,6 +90,7 @@ inline void BenchmarkOrderBook::handle(const ITCH::AddOrderNoMpid& msg) {
 }
 
 inline void BenchmarkOrderBook::handle(const ITCH::AddOrderMpid& msg) {
+    std::cout << msg.timestamp << '\n';
     if (msg.stock_locate == target_stock_locate) {
         order_book.add_order(msg.order_reference_number, static_cast<OB::Side>(msg.buy_sell), msg.shares, msg.price);
         touched = true;
@@ -96,6 +99,7 @@ inline void BenchmarkOrderBook::handle(const ITCH::AddOrderMpid& msg) {
 }
 
 inline void BenchmarkOrderBook::handle(const ITCH::OrderExecuted& msg) {
+    std::cout << msg.timestamp << '\n';
     if (msg.stock_locate == target_stock_locate) {
         order_book.execute_order(msg.order_reference_number, msg.executed_shares);
         touched = true;
@@ -104,6 +108,7 @@ inline void BenchmarkOrderBook::handle(const ITCH::OrderExecuted& msg) {
 }
 
 inline void BenchmarkOrderBook::handle(const ITCH::OrderExecutedPrice& msg) {
+    std::cout << msg.timestamp << '\n';
     if (msg.stock_locate == target_stock_locate) {
         order_book.execute_order(msg.order_reference_number, msg.executed_shares);
         touched = true;
@@ -112,6 +117,7 @@ inline void BenchmarkOrderBook::handle(const ITCH::OrderExecutedPrice& msg) {
 }
 
 inline void BenchmarkOrderBook::handle(const ITCH::OrderCancel& msg) {
+    std::cout << msg.timestamp << '\n';
     if (msg.stock_locate == target_stock_locate) {
         order_book.cancel_order(msg.order_reference_number, msg.cancelled_shares);
         touched = true;
@@ -120,6 +126,7 @@ inline void BenchmarkOrderBook::handle(const ITCH::OrderCancel& msg) {
 }
 
 inline void BenchmarkOrderBook::handle(const ITCH::OrderDelete& msg) {
+    std::cout << msg.timestamp << '\n';
     if (msg.stock_locate == target_stock_locate) {
         order_book.delete_order(msg.order_reference_number);
         touched = true;
@@ -128,6 +135,7 @@ inline void BenchmarkOrderBook::handle(const ITCH::OrderDelete& msg) {
 }
 
 inline void BenchmarkOrderBook::handle(const ITCH::OrderReplace& msg) {
+    std::cout << msg.timestamp << '\n';
     if (msg.stock_locate == target_stock_locate) {
         order_book.replace_order(msg.order_reference_number, msg.new_reference_number, msg.shares, msg.price);
         touched = true;

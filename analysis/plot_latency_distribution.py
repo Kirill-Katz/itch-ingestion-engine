@@ -100,7 +100,7 @@ if __name__ == "__main__":
     )
 
     plot_latency_distribution(
-        indir  + "parsing_lantecy_distribution.csv",
-        outdir + "parsing_lantecy_distribution.png"
+        indir  + "parsing_latency_distribution.csv",
+        outdir + "parsing_latency_distribution.png"
     )
 

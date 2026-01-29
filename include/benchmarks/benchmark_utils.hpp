@@ -29,6 +29,8 @@ void export_latency_distribution_csv(
     std::cout << "rdtscp frequence: " << rdtscp_freq << '\n';
 
     std::vector<std::pair<uint64_t, uint64_t>> data;
+    std::cout << "saved lantecies: " << ob.latency_distribution.size() << '\n';
+
     data.reserve(ob.latency_distribution.size());
 
     for (const auto& kv : ob.latency_distribution) {

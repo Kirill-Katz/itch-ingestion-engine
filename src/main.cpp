@@ -17,6 +17,7 @@
 #include "itch_parser.hpp"
 #include "benchmarks/benchmark_utils.hpp"
 #include "benchmarks/example_benchmark.hpp"
+#include "benchmarks/example_benchmark_parsing.hpp"
 
 std::atomic<bool> run_noise = true;
 
@@ -118,6 +119,8 @@ int main(int argc, char** argv) {
 
     ITCH::ItchParser parser;
     BenchmarkOrderBook ob_bm_handler;
+    BenchmarkParsing parsing_bm_handler;
+
     rte_mbuf* bufs[64];
 
     std::ofstream out("../data/itch_out",
@@ -129,9 +132,10 @@ int main(int argc, char** argv) {
     uint64_t last_print = rte_get_timer_cycles();
     uint64_t hz = rte_get_timer_hz();
     size_t total_size = 0;
+    uint64_t msgs = 0;
     uint64_t pkts = 0;
 
-    while (true) {
+    while (!ob_bm_handler.last_message) {
         uint16_t n = rte_eth_rx_burst(port_id, 0, bufs, 64);
         pkts += n;
 
@@ -162,6 +166,7 @@ int main(int argc, char** argv) {
             msg_count = rte_be_to_cpu_16(msg_count);
             p += 2;
 
+            msgs += msg_count;
             size_t itch_len = rte_be_to_cpu_16(udp->dgram_len) - sizeof(rte_udp_hdr) - 20;
 
             if (rte_be_to_cpu_16(udp->dgram_len) + sizeof(rte_ipv4_hdr) + sizeof(rte_ether_hdr) != m->pkt_len) {
@@ -169,6 +174,7 @@ int main(int argc, char** argv) {
                 throw std::runtime_error("Something went wrong, pkt length doesn't match expected length");
             }
 
+            parser.parse(p, itch_len, ob_bm_handler);
             total_size += itch_len;
         }
 
@@ -177,12 +183,15 @@ int main(int argc, char** argv) {
         if (now - last_print > hz) {
             std::cout << "Received ITCH: " << total_size << '\n';
             std::cout << "PpS: " << pkts << '\n';
+            std::cout << "Msg/s: " << msgs << '\n';
             pkts = 0;
+            msgs = 0;
             last_print = now;
         }
     }
 
     #ifndef PERF
+    //export_latency_distribution_csv(ob_bm_handler, outdir + "parsing_latency_distribution.csv");
     export_latency_distribution_csv(ob_bm_handler, outdir + "parsing_and_order_book_latency_distribution.csv");
     export_prices_csv(ob_bm_handler.prices, outdir);
     #endif

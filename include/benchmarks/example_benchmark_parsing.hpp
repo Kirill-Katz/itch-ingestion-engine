@@ -54,13 +54,12 @@ struct BenchmarkParsing {
 
 inline void BenchmarkParsing::handle_before() {
     std::atomic_signal_fence(std::memory_order_seq_cst);
-    _mm_lfence();
-    t0 = __rdtsc();
+    t0 = __rdtscp(&aux_start);
 }
 
 inline void BenchmarkParsing::handle_after() {
     _mm_lfence();
-    uint64_t t1 = __rdtsc();
+    uint64_t t1 = __rdtscp(&aux_end);
     std::atomic_signal_fence(std::memory_order_seq_cst);
 
     auto cycles = t1 - t0;
@@ -71,7 +70,6 @@ inline void BenchmarkParsing::handle_after() {
 #define DEF_HANDLER(T) \
 inline void BenchmarkParsing::handle(T msg) { \
     consume(msg); \
-    std::cout << msg.timestamp << '\n'; \
 }
 
 DEF_HANDLER(ITCH::AddOrderNoMpid)

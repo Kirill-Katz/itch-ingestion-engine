@@ -109,6 +109,7 @@ void OrderBook<Levels>::replace_order(uint64_t order_id, uint64_t new_order_id, 
 template<template<Side> typename Levels>
 void OrderBook<Levels>::delete_order(uint64_t order_id) {
     UNEXPECTED(!orders_map.contains(order_id), "Delete order did not find an order");
+
     Order& order = orders_map.at(order_id);
 
     if (order.side == Side::Bid) {

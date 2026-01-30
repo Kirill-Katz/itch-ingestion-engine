@@ -9,13 +9,20 @@ struct Level {
     uint32_t price;
 };
 
-enum class Side {
+enum class Side : char {
+    None = 0,
     Bid = 'B',
     Ask = 'S'
 };
 
 struct Order {
     uint32_t qty;
+    uint32_t price;
+    Side side;
+};
+
+struct BestLvlChange {
+    uint64_t qty;
     uint32_t price;
     Side side;
 };

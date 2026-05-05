@@ -1,5 +1,6 @@
 import csv
 import matplotlib.pyplot as plt
+from pathlib import Path
 import sys
 
 MAX_PLOT_LATENCY_NS = 2_000
@@ -54,7 +55,7 @@ def plot_latency_distribution(infile, outfile):
 
     plt.xlabel("Latency bucket (ns)")
     plt.ylabel("Count")
-    plt.title(f"Latency Distribution (<= {MAX_PLOT_LATENCY_NS} ns)")
+    plt.title(f"{Path(infile).stem} (<= {MAX_PLOT_LATENCY_NS} ns)")
 
     text = (
         f"avg = {avg_latency:.2f} ns\n"
@@ -92,15 +93,17 @@ if __name__ == "__main__":
         print("Please specify the input dir and the output dir")
         sys.exit(1)
 
-    indir = sys.argv[1];
-    outdir = sys.argv[2];
+    indir = Path(sys.argv[1])
+    outdir = Path(sys.argv[2])
 
-    plot_latency_distribution(
-        indir  + "parsing_and_order_book_latency_distribution_strategy_aapl.csv",
-        outdir + "parsing_and_order_book_latency_distribution_strategy_aapl.png"
-    )
+    csv_files = sorted(indir.glob("*latency_distribution*.csv"))
+    if not csv_files:
+        raise RuntimeError(f"No latency distribution CSV files found in {indir}")
 
-    plot_latency_distribution(
-        indir  + "parsing_and_order_book_latency_distribution_strategy_nvda.csv",
-        outdir + "parsing_and_order_book_latency_distribution_strategy_nvda.png"
-    )
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    for csv_file in csv_files:
+        plot_latency_distribution(
+            str(csv_file),
+            str(outdir / f"{csv_file.stem}.png")
+        )

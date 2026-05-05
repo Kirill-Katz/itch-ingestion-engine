@@ -14,7 +14,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <thread>
-#include <random>
+#include <string_view>
 
 #include "itch_parser.hpp"
 #include "benchmarks/benchmark_utils.hpp"
@@ -24,6 +24,27 @@
 #include "ingestor.hpp"
 #include "handler.hpp"
 #include "spmc_queue.hpp"
+
+struct StrategyConsumerConfig {
+    std::string name;
+    Handler::Queue* queue;
+    int cpu;
+};
+
+static void add_strategy_consumers(
+    std::vector<StrategyConsumerConfig>& consumers,
+    std::string_view prefix,
+    Handler::Queue& queue,
+    const std::vector<int>& cpus
+) {
+    for (size_t i = 0; i < cpus.size(); ++i) {
+        consumers.push_back({
+            .name = std::string(prefix) + "_consumer_" + std::to_string(i + 1),
+            .queue = &queue,
+            .cpu = cpus[i]
+        });
+    }
+}
 
 int main(int argc, char** argv) {
     cpu_set_t main_cpuset;
@@ -35,7 +56,7 @@ int main(int argc, char** argv) {
         &main_cpuset
     );
     if (main_pin_result != 0) {
-        std::cerr << "Failed to pin main thread to core 2\n";
+        std::cerr << "Failed to pin main thread to core 1\n";
         return 1;
     }
 
@@ -62,93 +83,66 @@ int main(int argc, char** argv) {
     std::vector<Handler::InstrumentConfig> instrument_config;
     Handler::Queue nvda_queue;
     Handler::Queue aapl_queue;
-    auto nvda_consumer = nvda_queue.make_consumer();
-    auto aapl_consumer = aapl_queue.make_consumer();
-
-    std::thread nvda_thread([c = std::move(nvda_consumer), o = outdir] () mutable {
-        absl::flat_hash_map<uint64_t, uint64_t> latency_distribution;
-
-        while (true) {
-            StrategyMsg msg;
-            unsigned aux_end;
-
-            while (!c.pop(msg)) {}
-            if (msg.type == StrategyMsgType::Stop) {
-                break;
-            }
-
-            _mm_lfence();
-            uint64_t t1 = __rdtscp(&aux_end);
-            auto cycles = t1 - msg.book_update.t0;
-
-            latency_distribution[cycles]++;
-        }
-
-        export_latency_distribution_csv_cycles(
-            latency_distribution,
-            o + "parsing_and_order_book_latency_distribution_strategy_nvda.csv"
-        );
-    });
-
-    std::thread aapl_thread([c = std::move(aapl_consumer), o = outdir] () mutable {
-        absl::flat_hash_map<uint64_t, uint64_t> latency_distribution;
-
-        while (true) {
-            StrategyMsg msg;
-            unsigned aux_end;
-
-            while (!c.pop(msg)) {}
-            if (msg.type == StrategyMsgType::Stop) {
-                break;
-            }
-
-            _mm_lfence();
-            uint64_t t1 = __rdtscp(&aux_end);
-            auto cycles = t1 - msg.book_update.t0;
-
-            latency_distribution[cycles]++;
-        }
-
-        export_latency_distribution_csv_cycles(
-            latency_distribution,
-            o + "parsing_and_order_book_latency_distribution_strategy_aapl.csv"
-        );
-    });
-
-    cpu_set_t nvda_cpuset;
-    CPU_ZERO(&nvda_cpuset);
-    CPU_SET(2, &nvda_cpuset);
-    int nvda_pin_result = pthread_setaffinity_np(
-        nvda_thread.native_handle(),
-        sizeof(cpu_set_t),
-        &nvda_cpuset
-    );
-    if (nvda_pin_result != 0) {
-        std::cerr << "Failed to pin NVDA consumer thread to core 2\n";
-        return 1;
-    }
-
-    cpu_set_t aapl_cpuset;
-    CPU_ZERO(&aapl_cpuset);
-    CPU_SET(4, &aapl_cpuset);
-    int aapl_pin_result = pthread_setaffinity_np(
-        aapl_thread.native_handle(),
-        sizeof(cpu_set_t),
-        &aapl_cpuset
-    );
-    if (aapl_pin_result != 0) {
-        std::cerr << "Failed to pin AAPL consumer thread to core 4\n";
-        return 1;
-    }
 
     instrument_config.push_back({ .symbol = "NVDA", .queue = &nvda_queue });
     instrument_config.push_back({ .symbol = "AAPL", .queue = &aapl_queue });
+
+    std::vector<StrategyConsumerConfig> consumer_configs;
+    add_strategy_consumers(consumer_configs, "nvidia", nvda_queue, {2});
+    add_strategy_consumers(consumer_configs, "apple", aapl_queue, {4, 5});
+
+    std::vector<std::thread> consumer_threads;
+    consumer_threads.reserve(consumer_configs.size());
+
+    for (const auto& consumer_cfg : consumer_configs) {
+        auto consumer = consumer_cfg.queue->make_consumer();
+        consumer_threads.emplace_back([c = std::move(consumer), o = outdir, name = consumer_cfg.name] () mutable {
+            absl::flat_hash_map<uint64_t, uint64_t> latency_distribution;
+
+            while (true) {
+                StrategyMsg msg;
+                unsigned aux_end;
+
+                while (!c.pop(msg)) {}
+                if (msg.type == StrategyMsgType::Stop) {
+                    break;
+                }
+
+                _mm_lfence();
+                uint64_t t1 = __rdtscp(&aux_end);
+                auto cycles = t1 - msg.book_update.t0;
+
+                latency_distribution[cycles]++;
+            }
+
+            export_latency_distribution_csv_cycles(
+                latency_distribution,
+                o + name + "_latency_distribution.csv"
+            );
+        });
+
+        cpu_set_t consumer_cpuset;
+        CPU_ZERO(&consumer_cpuset);
+        CPU_SET(consumer_cfg.cpu, &consumer_cpuset);
+        int consumer_pin_result = pthread_setaffinity_np(
+            consumer_threads.back().native_handle(),
+            sizeof(cpu_set_t),
+            &consumer_cpuset
+        );
+        if (consumer_pin_result != 0) {
+            std::cerr << "Failed to pin " << consumer_cfg.name
+                      << " to core " << consumer_cfg.cpu << "\n";
+            return 1;
+        }
+    }
+
     Handler handler(instrument_config);
 
     ITCH::Ingestor<Handler> ingestor(handler, dpdk_context);
     ingestor.ingest_messages();
 
-    nvda_thread.join();
-    aapl_thread.join();
+    for (auto& consumer_thread : consumer_threads) {
+        consumer_thread.join();
+    }
     return 0;
 }

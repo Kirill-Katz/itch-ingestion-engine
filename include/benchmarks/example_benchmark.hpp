@@ -43,6 +43,10 @@ struct BenchmarkOrderBook {
     uint32_t last_price = 0;
     std::vector<uint32_t> prices;
 
+    bool should_stop() {
+        return last_message;
+    }
+
     BenchmarkOrderBook() {
         #ifndef PERF
         prices.reserve(60'000);

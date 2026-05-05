@@ -19,6 +19,7 @@
 #include "benchmarks/example_benchmark.hpp"
 #include "benchmarks/example_benchmark_parsing.hpp"
 #include "dpdk_context.hpp"
+#include "ingestor.hpp"
 
 std::atomic<bool> run_noise = true;
 void allocator_noise() {
@@ -74,55 +75,59 @@ int main(int argc, char** argv) {
     uint64_t msgs = 0;
     uint64_t pkts = 0;
 
-    while (!ob_bm_handler.last_message) {
-        uint16_t n = rte_eth_rx_burst(port_id, 0, bufs, 64);
-        pkts += n;
 
-        for (int i = 0; i < n; ++i) {
-            rte_mbuf* m = bufs[i];
-            static int pkt_i = 0;
+    ITCH::Ingestor<BenchmarkOrderBook> ingestor(ob_bm_handler, dpdk_context);
+    ingestor.ingest_messages();
 
-            if (m->nb_segs != 1) {
-                printf("nonlinear: nb_segs=%u data_len=%u pkt_len=%u\n",
-                       m->nb_segs, m->data_len, m->pkt_len);
-            }
+    //while (!ob_bm_handler.should_stop()) {
+    //    uint16_t n = rte_eth_rx_burst(port_id, 0, bufs, 64);
+    //    pkts += n;
 
-            std::byte* p = rte_pktmbuf_mtod(m, std::byte*);
-            uint16_t len = m->pkt_len;
-            p += sizeof(rte_ether_hdr);
-            p += sizeof(rte_ipv4_hdr);
-            auto* udp = reinterpret_cast<rte_udp_hdr*>(p);
-            p += sizeof(rte_udp_hdr);
+    //    for (int i = 0; i < n; ++i) {
+    //        rte_mbuf* m = bufs[i];
+    //        static int pkt_i = 0;
 
-            p += 10; // temporary, MoldUDP64 of size 20 bytes
-            uint64_t seq;
-            std::memcpy(&seq, p, 8);
-            seq = rte_be_to_cpu_64(seq);
-            p += 8;
+    //        if (m->nb_segs != 1) {
+    //            printf("nonlinear: nb_segs=%u data_len=%u pkt_len=%u\n",
+    //                   m->nb_segs, m->data_len, m->pkt_len);
+    //        }
 
-            uint16_t msg_count;
-            std::memcpy(&msg_count, p, 2);
-            msg_count = rte_be_to_cpu_16(msg_count);
-            p += 2;
+    //        std::byte* p = rte_pktmbuf_mtod(m, std::byte*);
+    //        uint16_t len = m->pkt_len;
+    //        p += sizeof(rte_ether_hdr);
+    //        p += sizeof(rte_ipv4_hdr);
+    //        auto* udp = reinterpret_cast<rte_udp_hdr*>(p);
+    //        p += sizeof(rte_udp_hdr);
 
-            msgs += msg_count;
-            size_t itch_len = rte_be_to_cpu_16(udp->dgram_len) - sizeof(rte_udp_hdr) - 20;
+    //        p += 10; // temporary, MoldUDP64 of size 20 bytes
+    //        uint64_t seq;
+    //        std::memcpy(&seq, p, 8);
+    //        seq = rte_be_to_cpu_64(seq);
+    //        p += 8;
 
-            parser.parse(p, itch_len, ob_bm_handler);
-            total_size += itch_len;
-        }
+    //        uint16_t msg_count;
+    //        std::memcpy(&msg_count, p, 2);
+    //        msg_count = rte_be_to_cpu_16(msg_count);
+    //        p += 2;
 
-        rte_pktmbuf_free_bulk(bufs, n);
-        uint64_t now = rte_get_timer_cycles();
-        if (now - last_print > hz) {
-            std::cout << "Received ITCH: " << total_size << '\n';
-            std::cout << "PpS: " << pkts << '\n';
-            std::cout << "Msg/s: " << msgs << '\n';
-            pkts = 0;
-            msgs = 0;
-            last_print = now;
-        }
-    }
+    //        msgs += msg_count;
+    //        size_t itch_len = rte_be_to_cpu_16(udp->dgram_len) - sizeof(rte_udp_hdr) - 20;
+
+    //        parser.parse(p, itch_len, ob_bm_handler);
+    //        total_size += itch_len;
+    //    }
+
+    //    rte_pktmbuf_free_bulk(bufs, n);
+    //    uint64_t now = rte_get_timer_cycles();
+    //    if (now - last_print > hz) {
+    //        std::cout << "Received ITCH: " << total_size << '\n';
+    //        std::cout << "PpS: " << pkts << '\n';
+    //        std::cout << "Msg/s: " << msgs << '\n';
+    //        pkts = 0;
+    //        msgs = 0;
+    //        last_print = now;
+    //    }
+    //}
 
     #ifndef PERF
     export_latency_distribution_csv(ob_bm_handler, outdir + "parsing_and_order_book_latency_distribution.csv");

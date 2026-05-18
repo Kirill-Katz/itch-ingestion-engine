@@ -53,8 +53,9 @@ BestLvlChange OrderBook<Levels>::add_order(uint64_t order_id, Side side, uint32_
 
 template<template<Side> typename Levels>
 BestLvlChange OrderBook<Levels>::cancel_order(uint64_t order_id, uint32_t qty) {
-    UNEXPECTED(!orders_map.contains(order_id), "Cancel order did not find an order");
-    Order& order = orders_map.at(order_id);
+    auto it = orders_map.find(order_id);
+    UNEXPECTED(it == orders_map.end(), "Cancel order did not find an order");
+    Order& order = it->second;
     UNEXPECTED(order.qty < qty, "Partial cancel order volume greater than order volume");
 
     BestLvlChange best_lvl_change;
@@ -66,7 +67,7 @@ BestLvlChange OrderBook<Levels>::cancel_order(uint64_t order_id, uint32_t qty) {
 
     order.qty -= qty;
     if (order.qty == 0) {
-        orders_map.erase(order_id);
+        orders_map.erase(it);
     }
 
     return best_lvl_change;
@@ -74,8 +75,9 @@ BestLvlChange OrderBook<Levels>::cancel_order(uint64_t order_id, uint32_t qty) {
 
 template<template<Side> typename Levels>
 BestLvlChange OrderBook<Levels>::execute_order(uint64_t order_id, uint32_t qty) {
-    UNEXPECTED(!orders_map.contains(order_id), "Execute order did not find an order");
-    Order& order = orders_map.at(order_id);
+    auto it = orders_map.find(order_id);
+    UNEXPECTED(it == orders_map.end(), "Execute order did not find an order");
+    Order& order = it->second;
     UNEXPECTED(order.qty < qty, "Partial execute order volume greater than order volume");
 
     BestLvlChange best_lvl_change;
@@ -87,7 +89,7 @@ BestLvlChange OrderBook<Levels>::execute_order(uint64_t order_id, uint32_t qty) 
 
     order.qty -= qty;
     if (order.qty == 0) {
-        orders_map.erase(order_id);
+        orders_map.erase(it);
     }
 
     return best_lvl_change;
@@ -95,8 +97,9 @@ BestLvlChange OrderBook<Levels>::execute_order(uint64_t order_id, uint32_t qty) 
 
 template<template<Side> typename Levels>
 BestLvlChange OrderBook<Levels>::replace_order(uint64_t order_id, uint64_t new_order_id, uint32_t qty, uint32_t price) {
-    UNEXPECTED(!orders_map.contains(order_id), "Replace order did not find an order");
-    Order& old_order = orders_map.at(order_id);
+    auto it = orders_map.find(order_id);
+    UNEXPECTED(it == orders_map.end(), "Replace order did not find an order");
+    Order& old_order = it->second;
 
     Order new_order;
     new_order.side = old_order.side;
@@ -114,8 +117,8 @@ BestLvlChange OrderBook<Levels>::replace_order(uint64_t order_id, uint64_t new_o
         best_change_add = ask_levels.add({qty, price});
     }
 
-    orders_map.insert({new_order_id, new_order});
-    orders_map.erase(order_id);
+    orders_map.erase(it);
+    orders_map.emplace(new_order_id, new_order);
 
     if (best_change_add.side != Side::None) {
         return best_change_add;
@@ -124,9 +127,10 @@ BestLvlChange OrderBook<Levels>::replace_order(uint64_t order_id, uint64_t new_o
 
 template<template<Side> typename Levels>
 BestLvlChange OrderBook<Levels>::delete_order(uint64_t order_id) {
-    UNEXPECTED(!orders_map.contains(order_id), "Delete order did not find an order");
+    auto it = orders_map.find(order_id);
+    UNEXPECTED(it == orders_map.end(), "Delete order did not find an order");
 
-    Order& order = orders_map.at(order_id);
+    Order& order = it->second;
 
     BestLvlChange best_lvl_change;
     if (order.side == Side::Bid) {
@@ -135,7 +139,7 @@ BestLvlChange OrderBook<Levels>::delete_order(uint64_t order_id) {
         best_lvl_change = ask_levels.remove({order.qty, order.price});
     }
 
-    orders_map.erase(order_id);
+    orders_map.erase(it);
     return best_lvl_change;
 }
 

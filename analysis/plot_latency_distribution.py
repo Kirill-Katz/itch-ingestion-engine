@@ -1,9 +1,11 @@
 import csv
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 from pathlib import Path
 import sys
 
-MAX_PLOT_LATENCY_NS = 2_000
+MAX_LINEAR_PLOT_LATENCY_NS = 2_000
+MAX_LOG_PLOT_LATENCY_NS = 10_000
 
 def weighted_percentile(latencies, counts, percentile):
     total = sum(counts)
@@ -39,23 +41,48 @@ def plot_latency_distribution(infile, outfile):
     total_count = sum(counts)
     avg_latency = sum(l * c for l, c in zip(latencies, counts)) / total_count
 
-    plot_data = [(latency, count) for latency, count in zip(latencies, counts) if latency <= MAX_PLOT_LATENCY_NS]
-    if not plot_data:
-        raise RuntimeError(f"No data <= {MAX_PLOT_LATENCY_NS} ns")
+    linear_plot_data = [
+        (latency, count)
+        for latency, count in zip(latencies, counts)
+        if latency <= MAX_LINEAR_PLOT_LATENCY_NS
+    ]
+    if not linear_plot_data:
+        raise RuntimeError(f"No data <= {MAX_LINEAR_PLOT_LATENCY_NS} ns")
 
-    buckets = {}
-    for latency, count in plot_data:
-        buckets[latency] = buckets.get(latency, 0) + count
+    log_plot_data = [
+        (latency, count)
+        for latency, count in zip(latencies, counts)
+        if latency <= MAX_LOG_PLOT_LATENCY_NS
+    ]
+    if not log_plot_data:
+        raise RuntimeError(f"No data <= {MAX_LOG_PLOT_LATENCY_NS} ns")
 
-    bx = sorted(buckets.keys())
-    by = [buckets[b] for b in bx]
+    linear_buckets = {}
+    for latency, count in linear_plot_data:
+        linear_buckets[latency] = linear_buckets.get(latency, 0) + count
 
-    plt.figure(figsize=(10, 6))
-    plt.bar(bx, by)
+    log_buckets = {}
+    for latency, count in log_plot_data:
+        log_buckets[latency] = log_buckets.get(latency, 0) + count
 
-    plt.xlabel("Latency bucket (ns)")
-    plt.ylabel("Count")
-    plt.title(f"{Path(infile).stem} (<= {MAX_PLOT_LATENCY_NS} ns)")
+    linear_bx = sorted(linear_buckets.keys())
+    linear_by = [linear_buckets[b] for b in linear_bx]
+
+    log_bx = sorted(log_buckets.keys())
+    log_by = [log_buckets[b] for b in log_bx]
+    log_by_normalized = [count / total_count for count in log_by]
+
+    fig, (ax_linear, ax_log) = plt.subplots(
+        2,
+        1,
+        figsize=(10, 9),
+        gridspec_kw={"height_ratios": [2, 1]}
+    )
+
+    ax_linear.bar(linear_bx, linear_by)
+    ax_linear.set_xlabel("Latency bucket (ns)")
+    ax_linear.set_ylabel("Count")
+    ax_linear.set_title(f"{Path(infile).stem} (<= {MAX_LINEAR_PLOT_LATENCY_NS} ns)")
 
     text = (
         f"avg = {avg_latency:.2f} ns\n"
@@ -65,27 +92,38 @@ def plot_latency_distribution(infile, outfile):
         f"p999 = {p999} ns"
     )
 
-    plt.text(
+    ax_linear.text(
         0.98, 0.95,
         text,
-        transform=plt.gca().transAxes,
+        transform=ax_linear.transAxes,
         fontsize=10,
         verticalalignment="top",
         horizontalalignment="right",
         bbox=dict(boxstyle="round", facecolor="white", alpha=0.8)
     )
 
-    plt.axvline(
-        x=p50,
-        linestyle="--",
-        linewidth=2,
-        color="red",
-        alpha=0.8,
-        label="p50"
-    )
+    ax_log.bar(log_bx, log_by_normalized)
+    ax_log.set_yscale("log")
+    ax_log.set_xlim(0, MAX_LOG_PLOT_LATENCY_NS)
+    ax_log.set_xlabel("Latency bucket (ns)")
+    ax_log.set_ylabel("Share of samples")
+    ax_log.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1.0))
+    ax_log.set_title(f"Normalized bucket share, log scale (<= {MAX_LOG_PLOT_LATENCY_NS} ns)")
 
-    plt.tight_layout()
-    plt.savefig(outfile, dpi=300)
+    for ax in (ax_linear, ax_log):
+        ax.axvline(
+            x=p50,
+            linestyle="--",
+            linewidth=2,
+            color="red",
+            alpha=0.8,
+            label="p50"
+        )
+        ax.legend()
+        ax.grid(axis="y", alpha=0.25)
+
+    fig.tight_layout()
+    fig.savefig(outfile, dpi=300)
     plt.show()
 
 if __name__ == "__main__":

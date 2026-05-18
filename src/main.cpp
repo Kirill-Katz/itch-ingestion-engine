@@ -94,16 +94,25 @@ int main(int argc, char** argv) {
     std::vector<std::thread> consumer_threads;
     consumer_threads.reserve(consumer_configs.size());
 
+    uint64_t rdtscp_freq = calibrate_tsc();
+
     for (const auto& consumer_cfg : consumer_configs) {
         auto consumer = consumer_cfg.queue->make_consumer();
-        consumer_threads.emplace_back([c = std::move(consumer), o = outdir, name = consumer_cfg.name] () mutable {
-            absl::flat_hash_map<uint64_t, uint64_t> latency_distribution;
+        consumer_threads.emplace_back([c = std::move(consumer), o = outdir, name = consumer_cfg.name, f = rdtscp_freq] () mutable {
+            constexpr uint64_t MAX_LATENCY = 100'000;
+            uint64_t skipped_latencies = 0;
+
+            std::array<uint64_t, MAX_LATENCY + 1> hist;
+            hist.fill(0);
 
             while (true) {
                 StrategyMsg msg;
                 unsigned aux_end;
 
-                while (!c.pop(msg)) {}
+                while (!c.pop(msg)) {
+                    _mm_pause();
+                }
+
                 if (msg.type == StrategyMsgType::Stop) {
                     break;
                 }
@@ -111,12 +120,18 @@ int main(int argc, char** argv) {
                 _mm_lfence();
                 uint64_t t1 = __rdtscp(&aux_end);
                 auto cycles = t1 - msg.book_update.t0;
+                uint64_t ns = cycles_to_ns(cycles, f);
 
-                latency_distribution[cycles]++;
+                if (ns <= MAX_LATENCY) {
+                    hist[ns]++;
+                } else {
+                    skipped_latencies++;
+                }
             }
 
-            export_latency_distribution_csv_cycles(
-                latency_distribution,
+            std::cout << "Skipped latencies: " << skipped_latencies << '\n';
+            export_latency_histogram_csv_ns(
+                hist,
                 o + name + "_latency_distribution.csv"
             );
         });

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <benchmark/benchmark.h>
 #include <cstdint>
 #include <absl/container/flat_hash_map.h>
@@ -70,6 +71,8 @@ public:
         Queue* queue;
     };
 
+    uint64_t max_orders = 0;
+
     Handler(const std::vector<InstrumentConfig>& instruments)
     {
         locate_to_book.fill(nullptr);
@@ -106,6 +109,10 @@ inline void Handler::handle_before() {
 inline void Handler::handle_after() {}
 
 inline void Handler::handle_change(const OB::BestLvlChange& best_lvl_change, uint64_t timestamp, Queue* queue) {
+    if (best_lvl_change.side == OB::Side::None) {
+        return;
+    }
+
     auto msg = StrategyMsg {
         .type = StrategyMsgType::BookUpdate,
         .book_update {
@@ -134,6 +141,7 @@ inline void Handler::handle(const ITCH::SystemEvent& msg) {
                 q->push({ .type = StrategyMsgType::Stop });
             }
         }
+        std::cout << "Max orders: " << max_orders << '\n';
     } else if (msg.event_code == 'Q') { // start of market hours
         record_prices = true;
     } else if (msg.event_code == 'M') { // end of market hours
@@ -167,12 +175,14 @@ inline void Handler::handle(const ITCH::AddOrderNoMpid& msg) {
         return;
     }
 
-    auto change = locate_to_book[msg.stock_locate]->add_order(
+    auto change = book->add_order(
         msg.order_reference_number,
         static_cast<OB::Side>(msg.buy_sell),
         msg.shares,
         msg.price
     );
+
+    max_orders = std::max(max_orders, book->orders_map.size());
 
     handle_change(change, msg.timestamp, queue);
 }
@@ -183,12 +193,14 @@ inline void Handler::handle(const ITCH::AddOrderMpid& msg) {
         return;
     }
 
-    auto change = locate_to_book[msg.stock_locate]->add_order(
+    auto change = book->add_order(
         msg.order_reference_number,
         static_cast<OB::Side>(msg.buy_sell),
         msg.shares,
         msg.price
     );
+
+    max_orders = std::max(max_orders, book->orders_map.size());
 
     handle_change(change, msg.timestamp, queue);
 }
@@ -199,7 +211,7 @@ inline void Handler::handle(const ITCH::OrderExecuted& msg) {
         return;
     }
 
-    auto change = locate_to_book[msg.stock_locate]->execute_order(
+    auto change = book->execute_order(
         msg.order_reference_number,
         msg.executed_shares
     );
@@ -212,7 +224,7 @@ inline void Handler::handle(const ITCH::OrderExecutedPrice& msg) {
         return;
     }
 
-    auto change = locate_to_book[msg.stock_locate]->execute_order(
+    auto change = book->execute_order(
         msg.order_reference_number,
         msg.executed_shares
     );
@@ -225,7 +237,7 @@ inline void Handler::handle(const ITCH::OrderCancel& msg) {
         return;
     }
 
-    auto change = locate_to_book[msg.stock_locate]->cancel_order(
+    auto change = book->cancel_order(
         msg.order_reference_number,
         msg.cancelled_shares
     );
@@ -238,7 +250,7 @@ inline void Handler::handle(const ITCH::OrderDelete& msg) {
         return;
     }
 
-    auto change = locate_to_book[msg.stock_locate]->delete_order(msg.order_reference_number);
+    auto change = book->delete_order(msg.order_reference_number);
     handle_change(change, msg.timestamp, queue);
 }
 
@@ -248,7 +260,7 @@ inline void Handler::handle(const ITCH::OrderReplace& msg) {
         return;
     }
 
-    auto change = locate_to_book[msg.stock_locate]->replace_order(
+    auto change = book->replace_order(
         msg.order_reference_number,
         msg.new_reference_number,
         msg.shares,
